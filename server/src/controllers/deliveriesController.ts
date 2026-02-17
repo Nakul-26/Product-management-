@@ -41,7 +41,7 @@ export const createDelivery = async (req: Request, res: Response) => {
 };
 
 export const updateDelivery = async (req: Request, res: Response) => {
-  const delivery = await Delivery.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  const delivery = await Delivery.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!delivery) return res.status(404).json({ error: 'Delivery not found' });
   res.json(delivery);
 };

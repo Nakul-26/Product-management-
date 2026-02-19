@@ -11,6 +11,7 @@ import {
 import { getPayments, createPayment, updatePayment } from '../controllers/paymentsController';
 import { createCategory, getCategories, getCategoryById } from '../controllers/categoriesController';
 import { getDeliveries, createDelivery, updateDelivery } from '../controllers/deliveriesController';
+import { createSale, getSales, getSaleById, getDailySalesSummary, getSaleInvoice } from '../controllers/salesController';
 import { getDashboard } from '../controllers/dashboardController';
 
 const asyncHandler =
@@ -31,6 +32,12 @@ router.get('/stock/alerts/low', asyncHandler(getLowStockProducts));
 router.post('/categories', asyncHandler(createCategory));
 router.get('/categories', asyncHandler(getCategories));
 router.get('/categories/:id', asyncHandler(getCategoryById));
+
+router.post('/sales', asyncHandler(createSale));
+router.get('/sales', asyncHandler(getSales));
+router.get('/sales/summary/daily', asyncHandler(getDailySalesSummary));
+router.get('/sales/:id/invoice', asyncHandler(getSaleInvoice));
+router.get('/sales/:id', asyncHandler(getSaleById));
 
 router.get('/payments', asyncHandler(getPayments));
 router.post('/payments', asyncHandler(createPayment));

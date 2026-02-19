@@ -39,6 +39,51 @@ export interface ProductListResponse {
   };
 }
 
+export interface SaleItem {
+  productId: string;
+  productName: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  lineDiscount: number;
+  lineTotal: number;
+}
+
+export interface Sale {
+  _id: string;
+  invoiceNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  items: SaleItem[];
+  subTotal: number;
+  discount: number;
+  gstRate: number;
+  gstAmount: number;
+  grandTotal: number;
+  paymentMethod: 'cash' | 'upi' | 'card';
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface SalesListResponse {
+  data: Sale[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface DailySalesSummary {
+  date: string;
+  totalSales: number;
+  totalGst: number;
+  totalOrders: number;
+  paymentBreakdown: Record<string, number>;
+}
+
 export interface Payment {
   _id: string;
   orderId?: string;

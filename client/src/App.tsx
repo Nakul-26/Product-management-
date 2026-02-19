@@ -1,6 +1,16 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { api } from './api/client';
-import { Category, Dashboard, Delivery, Payment, Product, ProductListResponse } from './types';
+import {
+  Category,
+  DailySalesSummary,
+  Dashboard,
+  Delivery,
+  Payment,
+  Product,
+  ProductListResponse,
+  Sale,
+  SalesListResponse
+} from './types';
 import './styles.css';
 
 const defaultDashboard: Dashboard = {
@@ -37,6 +47,22 @@ type CategoryFormState = {
   createdBy: string;
 };
 
+type SaleFormState = {
+  customerName: string;
+  customerPhone: string;
+  discount: string;
+  gstRate: string;
+  paymentMethod: 'cash' | 'upi' | 'card';
+  createdBy: string;
+  notes: string;
+};
+
+type CartItem = {
+  productId: string;
+  quantity: number;
+  lineDiscount: number;
+};
+
 const defaultProductForm: ProductFormState = {
   name: '',
   sku: '',
@@ -62,6 +88,16 @@ const defaultCategoryForm: CategoryFormState = {
   createdBy: ''
 };
 
+const defaultSaleForm: SaleFormState = {
+  customerName: 'Walk-in Customer',
+  customerPhone: '',
+  discount: '0',
+  gstRate: '0',
+  paymentMethod: 'cash',
+  createdBy: '',
+  notes: ''
+};
+
 const parseCsv = (content: string): Record<string, string>[] => {
   const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length < 2) return [];
@@ -81,15 +117,22 @@ function App() {
   const [dashboard, setDashboard] = useState<Dashboard>(defaultDashboard);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [dailySummary, setDailySummary] = useState<DailySalesSummary | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [tab, setTab] = useState<'products' | 'categories' | 'payments' | 'deliveries'>('products');
+  const [tab, setTab] = useState<'products' | 'categories' | 'sales' | 'payments' | 'deliveries'>('products');
   const [productForm, setProductForm] = useState<ProductFormState>(defaultProductForm);
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(defaultCategoryForm);
+  const [saleForm, setSaleForm] = useState<SaleFormState>(defaultSaleForm);
+  const [saleCart, setSaleCart] = useState<CartItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [productError, setProductError] = useState<string>('');
   const [categoryError, setCategoryError] = useState<string>('');
+  const [salesError, setSalesError] = useState<string>('');
   const [productNotice, setProductNotice] = useState<string>('');
+  const [salesNotice, setSalesNotice] = useState<string>('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -98,9 +141,37 @@ function App() {
 
   const parentCategories = useMemo(() => categories.filter((category) => !category.parent), [categories]);
 
+  const cartPreview = useMemo(() => {
+    const lineItems = saleCart
+      .map((item) => {
+        const product = products.find((p) => p._id === item.productId);
+        if (!product) return null;
+        const lineTotal = Math.max(product.price * item.quantity - item.lineDiscount, 0);
+        return { product, ...item, lineTotal };
+      })
+      .filter(Boolean) as Array<{ product: Product; productId: string; quantity: number; lineDiscount: number; lineTotal: number }>;
+
+    const subTotal = lineItems.reduce((sum, item) => sum + item.lineTotal, 0);
+    const discount = Number(saleForm.discount || 0);
+    const taxable = Math.max(subTotal - discount, 0);
+    const gstAmount = (taxable * Number(saleForm.gstRate || 0)) / 100;
+    const grandTotal = taxable + gstAmount;
+
+    return { lineItems, subTotal, gstAmount, grandTotal };
+  }, [products, saleCart, saleForm.discount, saleForm.gstRate]);
+
   const loadCategories = async () => {
     const response = await api.get<Category[]>('/categories');
     setCategories(response.data);
+  };
+
+  const loadSalesData = async () => {
+    const [salesRes, summaryRes] = await Promise.all([
+      api.get<SalesListResponse>('/sales', { params: { page: 1, limit: 10 } }),
+      api.get<DailySalesSummary>('/sales/summary/daily')
+    ]);
+    setSales(salesRes.data.data);
+    setDailySummary(summaryRes.data);
   };
 
   const loadData = async (
@@ -130,7 +201,7 @@ function App() {
   };
 
   useEffect(() => {
-    Promise.all([loadData(1, '', 'all', 'all'), loadCategories()]);
+    Promise.all([loadData(1, '', 'all', 'all'), loadCategories(), loadSalesData()]);
   }, []);
 
   const resetProductForm = () => {
@@ -143,6 +214,103 @@ function App() {
   const resetCategoryForm = () => {
     setCategoryForm(defaultCategoryForm);
     setCategoryError('');
+  };
+
+  const resetSalesForm = () => {
+    setSaleForm(defaultSaleForm);
+    setSaleCart([]);
+    setSelectedProductId('');
+    setSalesError('');
+  };
+
+  const addProductToCart = () => {
+    if (!selectedProductId) return;
+    const exists = saleCart.find((item) => item.productId === selectedProductId);
+    if (exists) return;
+    setSaleCart((prev) => [...prev, { productId: selectedProductId, quantity: 1, lineDiscount: 0 }]);
+    setSelectedProductId('');
+  };
+
+  const updateCartItem = (productId: string, key: 'quantity' | 'lineDiscount', value: number) => {
+    setSaleCart((prev) =>
+      prev.map((item) => (item.productId === productId ? { ...item, [key]: Math.max(value, 0) } : item))
+    );
+  };
+
+  const removeCartItem = (productId: string) => {
+    setSaleCart((prev) => prev.filter((item) => item.productId !== productId));
+  };
+
+  const printInvoice = async (saleId: string) => {
+    try {
+      const { data } = await api.get(`/sales/${saleId}/invoice`);
+      const win = window.open('', '_blank');
+      if (!win) return;
+
+      const rows = data.items
+        .map(
+          (item: any) =>
+            `<tr><td>${item.productName}</td><td>${item.quantity}</td><td>₹${item.unitPrice.toFixed(2)}</td><td>₹${item.lineTotal.toFixed(2)}</td></tr>`
+        )
+        .join('');
+
+      win.document.write(`
+        <html><head><title>Invoice ${data.invoiceNumber}</title></head>
+        <body>
+          <h2>Invoice: ${data.invoiceNumber}</h2>
+          <p><strong>Customer:</strong> ${data.customerName || 'Walk-in Customer'}</p>
+          <p><strong>Date:</strong> ${new Date(data.createdAt).toLocaleString()}</p>
+          <table border="1" cellspacing="0" cellpadding="6" width="100%">
+            <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Line Total</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <p><strong>Sub Total:</strong> ₹${Number(data.subTotal).toFixed(2)}</p>
+          <p><strong>Discount:</strong> ₹${Number(data.discount).toFixed(2)}</p>
+          <p><strong>GST (${data.gstRate}%):</strong> ₹${Number(data.gstAmount).toFixed(2)}</p>
+          <h3>Grand Total: ₹${Number(data.grandTotal).toFixed(2)}</h3>
+        </body></html>
+      `);
+      win.document.close();
+      win.focus();
+      win.print();
+    } catch {
+      setSalesError('Unable to fetch invoice for printing.');
+    }
+  };
+
+  const handleCreateSale = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSalesError('');
+    setSalesNotice('');
+
+    if (saleCart.length === 0) {
+      setSalesError('Add at least one product to cart.');
+      return;
+    }
+    if (!saleForm.createdBy) {
+      setSalesError('createdBy is required.');
+      return;
+    }
+
+    const payload = {
+      customerName: saleForm.customerName,
+      customerPhone: saleForm.customerPhone,
+      discount: Number(saleForm.discount || 0),
+      gstRate: Number(saleForm.gstRate || 0),
+      paymentMethod: saleForm.paymentMethod,
+      createdBy: saleForm.createdBy,
+      notes: saleForm.notes,
+      items: saleCart.map((item) => ({ productId: item.productId, quantity: item.quantity, lineDiscount: item.lineDiscount }))
+    };
+
+    try {
+      const { data } = await api.post<Sale>('/sales', payload);
+      setSalesNotice(`Sale created successfully. Invoice: ${data.invoiceNumber}`);
+      resetSalesForm();
+      await Promise.all([loadData(page, search, statusFilter, categoryFilter), loadSalesData()]);
+    } catch (error: any) {
+      setSalesError(error?.response?.data?.error || 'Unable to create sale.');
+    }
   };
 
   const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -348,6 +516,7 @@ function App() {
       <nav className="tabs">
         <button onClick={() => setTab('products')} className={tab === 'products' ? 'active' : ''}>Products</button>
         <button onClick={() => setTab('categories')} className={tab === 'categories' ? 'active' : ''}>Categories</button>
+        <button onClick={() => setTab('sales')} className={tab === 'sales' ? 'active' : ''}>Sales</button>
         <button onClick={() => setTab('payments')} className={tab === 'payments' ? 'active' : ''}>Payments</button>
         <button onClick={() => setTab('deliveries')} className={tab === 'deliveries' ? 'active' : ''}>Deliveries</button>
       </nav>
@@ -464,11 +633,84 @@ function App() {
           {categoryError && <p className="error-text">{categoryError}</p>}
 
           <h3>All Categories ({categories.length})</h3>
+          <table><thead><tr><th>Name</th><th>Slug</th><th>Parent</th><th>Status</th><th>CreatedBy</th></tr></thead><tbody>{categories.map((c) => (<tr key={c._id}><td>{c.name}</td><td>{c.slug}</td><td>{parentLabel(c)}</td><td>{c.status}</td><td>{c.createdBy}</td></tr>))}</tbody></table>
+        </section>
+      )}
+
+      {tab === 'sales' && (
+        <section className="panel">
+          <h2>Sales Management</h2>
+
+          {dailySummary && (
+            <div className="sales-summary-cards">
+              <article><h4>Daily Sales</h4><p>₹{dailySummary.totalSales.toFixed(2)}</p></article>
+              <article><h4>Orders</h4><p>{dailySummary.totalOrders}</p></article>
+              <article><h4>GST Collected</h4><p>₹{dailySummary.totalGst.toFixed(2)}</p></article>
+            </div>
+          )}
+
+          <form className="sale-cart-form" onSubmit={handleCreateSale}>
+            <div className="cart-add-row">
+              <select value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)}>
+                <option value="">Select product to add</option>
+                {products.map((product) => (
+                  <option key={product._id} value={product._id}>{product.name} ({product.sku}) - Stock {product.stock}</option>
+                ))}
+              </select>
+              <button type="button" className="btn btn-light" onClick={addProductToCart}>Add to Cart</button>
+            </div>
+
+            <table>
+              <thead><tr><th>Product</th><th>Qty</th><th>Line Discount</th><th>Line Total</th><th>Action</th></tr></thead>
+              <tbody>
+                {cartPreview.lineItems.map((item) => (
+                  <tr key={item.productId}>
+                    <td>{item.product.name}</td>
+                    <td><input type="number" min={1} value={item.quantity} onChange={(e) => updateCartItem(item.productId, 'quantity', Number(e.target.value || 1))} /></td>
+                    <td><input type="number" min={0} step="0.01" value={item.lineDiscount} onChange={(e) => updateCartItem(item.productId, 'lineDiscount', Number(e.target.value || 0))} /></td>
+                    <td>₹{item.lineTotal.toFixed(2)}</td>
+                    <td><button type="button" className="btn btn-danger" onClick={() => removeCartItem(item.productId)}>Remove</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="form-grid">
+              <label>Customer Name<input value={saleForm.customerName} onChange={(e) => setSaleForm((prev) => ({ ...prev, customerName: e.target.value }))} /></label>
+              <label>Customer Phone<input value={saleForm.customerPhone} onChange={(e) => setSaleForm((prev) => ({ ...prev, customerPhone: e.target.value }))} /></label>
+              <label>Discount<input type="number" min={0} step="0.01" value={saleForm.discount} onChange={(e) => setSaleForm((prev) => ({ ...prev, discount: e.target.value }))} /></label>
+              <label>GST %<input type="number" min={0} step="0.01" value={saleForm.gstRate} onChange={(e) => setSaleForm((prev) => ({ ...prev, gstRate: e.target.value }))} /></label>
+              <label>Payment Method<select value={saleForm.paymentMethod} onChange={(e) => setSaleForm((prev) => ({ ...prev, paymentMethod: e.target.value as 'cash' | 'upi' | 'card' }))}><option value="cash">cash</option><option value="upi">upi</option><option value="card">card</option></select></label>
+              <label>Created By (User ID) *<input value={saleForm.createdBy} onChange={(e) => setSaleForm((prev) => ({ ...prev, createdBy: e.target.value }))} /></label>
+              <label className="full-width">Notes<textarea value={saleForm.notes} onChange={(e) => setSaleForm((prev) => ({ ...prev, notes: e.target.value }))} /></label>
+            </div>
+
+            <div className="sale-totals">
+              <p>Sub Total: ₹{cartPreview.subTotal.toFixed(2)}</p>
+              <p>GST: ₹{cartPreview.gstAmount.toFixed(2)}</p>
+              <h3>Grand Total: ₹{cartPreview.grandTotal.toFixed(2)}</h3>
+            </div>
+
+            <div className="form-actions"><button className="btn btn-primary" type="submit">Create Sale</button><button type="button" className="btn btn-light" onClick={resetSalesForm}>Clear</button></div>
+          </form>
+
+          {salesError && <p className="error-text">{salesError}</p>}
+          {salesNotice && <p className="success-text">{salesNotice}</p>}
+
+          <h3>Recent Sales</h3>
           <table>
-            <thead><tr><th>Name</th><th>Slug</th><th>Parent</th><th>Status</th><th>CreatedBy</th></tr></thead>
+            <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Payment</th><th>GST</th><th>Total</th><th>Actions</th></tr></thead>
             <tbody>
-              {categories.map((c) => (
-                <tr key={c._id}><td>{c.name}</td><td>{c.slug}</td><td>{parentLabel(c)}</td><td>{c.status}</td><td>{c.createdBy}</td></tr>
+              {sales.map((sale) => (
+                <tr key={sale._id}>
+                  <td>{sale.invoiceNumber}</td>
+                  <td>{new Date(sale.createdAt).toLocaleString()}</td>
+                  <td>{sale.customerName}</td>
+                  <td>{sale.paymentMethod}</td>
+                  <td>₹{sale.gstAmount.toFixed(2)}</td>
+                  <td>₹{sale.grandTotal.toFixed(2)}</td>
+                  <td><button className="btn btn-light" type="button" onClick={() => printInvoice(sale._id)}>Print Invoice</button></td>
+                </tr>
               ))}
             </tbody>
           </table>

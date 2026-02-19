@@ -1,62 +1,57 @@
-# Shop Owner Automation (MERN + TypeScript)
+# Product / Inventory / Sales ERP (MERN + TypeScript)
 
-A complete rewrite of the original project into a **MERN stack application with TypeScript** to automate day-to-day work for shop owners.
+A production-style baseline setup for a Product / Inventory / Sales ERP with clean frontend-backend separation.
 
 ## Stack
-- **MongoDB** + Mongoose
-- **Express** (TypeScript API)
-- **React** + Vite + TypeScript UI
-- **Node.js** workspaces for monorepo management
+- **Backend**: Node.js, Express, TypeScript, MongoDB (Mongoose)
+- **Frontend**: React, Vite, TypeScript
+- **Monorepo**: npm workspaces (`server`, `client`)
 
 ## Project Structure
+```text
+product-management/
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── models/
+│   │   ├── middleware/
+│   │   ├── utils/
+│   │   └── app.ts
+│   ├── .env
+│   ├── .env.example
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── server.ts
+└── client/
+    └── src/
+        ├── api/
+        ├── pages/
+        ├── components/
+        ├── layouts/
+        ├── App.tsx
+        └── main.tsx
 ```
-.
-├── server/   # Express + TypeScript + MongoDB API
-└── client/   # React + TypeScript dashboard app
-```
-
-## Features
-- Product and inventory management
-- Low-stock monitoring
-- Payment tracking
-- Delivery creation and status management
-- Dashboard metrics for core operations
 
 ## Setup
-1. Install dependencies for all workspaces:
+1. Install workspace dependencies:
    ```bash
    npm install
    ```
-2. Create server environment file:
+2. Configure backend environment:
    ```bash
    cp server/.env.example server/.env
    ```
-3. Update `MONGODB_URI` in `server/.env`.
+3. Update `MONGODB_URI` in `server/.env` if needed.
 
-## Run in Development
-- API server:
-  ```bash
-  npm run dev:server
-  ```
-- Web client:
-  ```bash
-  npm run dev:client
-  ```
-
-> By default the client expects API at `http://localhost:5000/api`.
-
-## Build
+## Run
 ```bash
-npm run build
+npm run dev:server
+npm run dev:client
 ```
 
-## API Snapshot
-- `GET /api/dashboard`
-- `GET/POST/PUT/DELETE /api/products`
-- `GET /api/stock/alerts/low`
-- `GET/POST/PUT /api/payments`
-- `GET/POST/PUT /api/deliveries`
-
-## Notes
-- Delivery creation uses MongoDB transactions so stock deduction and delivery creation stay consistent.
-- This rewrite intentionally migrates from SQLite/vanilla JS to MongoDB/React/TypeScript.
+## Health Check
+- Backend: `GET http://localhost:5000/api/health` → `{ "status": "OK" }`
+- Frontend calls this endpoint on load and logs the response in browser console.

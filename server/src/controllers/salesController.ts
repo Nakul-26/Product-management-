@@ -1,12 +1,13 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import mongoose from 'mongoose';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { Product } from '../models/Product';
 import { Sale } from '../models/Sale';
 
 const makeInvoiceNumber = () => `INV-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
 
-export const createSale = async (req: Request, res: Response) => {
-  const { items, paymentMethod, gstRate = 0, discount = 0, customerName, customerPhone, notes, createdBy } = req.body;
+export const createSale = async (req: AuthenticatedRequest, res: Response) => {
+  const { items, paymentMethod, gstRate = 0, discount = 0, customerName, customerPhone, notes } = req.body;
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'At least one cart item is required' });
@@ -14,7 +15,7 @@ export const createSale = async (req: Request, res: Response) => {
   if (!['cash', 'upi', 'card'].includes(paymentMethod)) {
     return res.status(400).json({ error: 'paymentMethod must be cash, upi or card' });
   }
-  if (!createdBy) return res.status(400).json({ error: 'createdBy is required' });
+  if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' });
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -22,6 +23,8 @@ export const createSale = async (req: Request, res: Response) => {
   try {
     const saleItems = [] as any[];
     let subTotal = 0;
+    let grossRevenue = 0;
+    let cogs = 0;
 
     for (const item of items) {
       const product = await Product.findById(item.productId).session(session);
@@ -39,6 +42,13 @@ export const createSale = async (req: Request, res: Response) => {
       const lineTotal = Math.max(unitPrice * quantity - lineDiscount, 0);
       subTotal += lineTotal;
 
+      const itemRevenue = unitPrice * quantity;
+      const itemCogs = product.costPrice * quantity;
+      const itemProfit = itemRevenue - itemCogs;
+
+      grossRevenue += itemRevenue;
+      cogs += itemCogs;
+
       saleItems.push({
         productId: product._id,
         productName: product.name,
@@ -46,7 +56,11 @@ export const createSale = async (req: Request, res: Response) => {
         quantity,
         unitPrice,
         lineDiscount,
-        lineTotal
+        lineTotal,
+        costPriceAtSale: product.costPrice,
+        itemRevenue,
+        itemCogs,
+        itemProfit
       });
     }
 
@@ -54,6 +68,9 @@ export const createSale = async (req: Request, res: Response) => {
     const taxableBase = Math.max(subTotal - normalizedDiscount, 0);
     const gstAmount = (taxableBase * Math.max(Number(gstRate || 0), 0)) / 100;
     const grandTotal = taxableBase + gstAmount;
+
+    const grossProfit = grossRevenue - cogs;
+    const margin = grossRevenue > 0 ? (grossProfit / grossRevenue) * 100 : 0;
 
     const sale = await Sale.create(
       [
@@ -67,9 +84,13 @@ export const createSale = async (req: Request, res: Response) => {
           gstRate: Number(gstRate || 0),
           gstAmount,
           grandTotal,
+          grossRevenue,
+          cogs,
+          grossProfit,
+          margin,
           paymentMethod,
           notes,
-          createdBy
+          createdBy: req.user.id
         }
       ],
       { session }
@@ -85,7 +106,7 @@ export const createSale = async (req: Request, res: Response) => {
   }
 };
 
-export const getSales = async (req: Request, res: Response) => {
+export const getSales = async (req: AuthenticatedRequest, res: Response) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
 
@@ -100,13 +121,13 @@ export const getSales = async (req: Request, res: Response) => {
   });
 };
 
-export const getSaleById = async (req: Request, res: Response) => {
+export const getSaleById = async (req: AuthenticatedRequest, res: Response) => {
   const sale = await Sale.findById(req.params.id);
   if (!sale) return res.status(404).json({ error: 'Sale not found' });
   res.json(sale);
 };
 
-export const getDailySalesSummary = async (req: Request, res: Response) => {
+export const getDailySalesSummary = async (req: AuthenticatedRequest, res: Response) => {
   const dateParam = (req.query.date as string | undefined) || new Date().toISOString().slice(0, 10);
   const start = new Date(`${dateParam}T00:00:00.000Z`);
   const end = new Date(`${dateParam}T23:59:59.999Z`);
@@ -137,7 +158,7 @@ export const getDailySalesSummary = async (req: Request, res: Response) => {
   res.json({ date: dateParam, ...totals });
 };
 
-export const getSaleInvoice = async (req: Request, res: Response) => {
+export const getSaleInvoice = async (req: AuthenticatedRequest, res: Response) => {
   const sale = await Sale.findById(req.params.id);
   if (!sale) return res.status(404).json({ error: 'Sale not found' });
 
@@ -152,6 +173,10 @@ export const getSaleInvoice = async (req: Request, res: Response) => {
     gstRate: sale.gstRate,
     gstAmount: sale.gstAmount,
     grandTotal: sale.grandTotal,
+    grossRevenue: sale.grossRevenue,
+    cogs: sale.cogs,
+    grossProfit: sale.grossProfit,
+    margin: sale.margin,
     paymentMethod: sale.paymentMethod,
     notes: sale.notes
   });

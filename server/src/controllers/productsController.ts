@@ -1,4 +1,5 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { Category } from '../models/Category';
 import { Product } from '../models/Product';
 
@@ -35,7 +36,7 @@ const generateUniqueSku = async (name: string): Promise<string> => {
   return candidate;
 };
 
-export const getProducts = async (req: Request, res: Response) => {
+export const getProducts = async (req: AuthenticatedRequest, res: Response) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
   const search = (req.query.search as string | undefined)?.trim();
@@ -77,17 +78,18 @@ export const getProducts = async (req: Request, res: Response) => {
   });
 };
 
-export const getProductById = async (req: Request, res: Response) => {
+export const getProductById = async (req: AuthenticatedRequest, res: Response) => {
   const product = await Product.findById(req.params.id).populate('category', 'name slug');
   if (!product) return res.status(404).json({ error: 'Product not found' });
   res.json(product);
 };
 
-export const createProduct = async (req: Request, res: Response) => {
-  const { name, sku, price, costPrice, category, createdBy, barcode } = req.body;
-  if (!name || price === undefined || costPrice === undefined || !category || !createdBy) {
-    return res.status(400).json({ error: 'name, price, costPrice, category and createdBy are required' });
+export const createProduct = async (req: AuthenticatedRequest, res: Response) => {
+  const { name, sku, price, costPrice, category, barcode } = req.body;
+  if (!name || price === undefined || costPrice === undefined || !category) {
+    return res.status(400).json({ error: 'name, price, costPrice and category are required' });
   }
+  if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' });
 
   const categoryExists = await Category.findById(category);
   if (!categoryExists) return res.status(400).json({ error: 'Category not found' });
@@ -101,23 +103,24 @@ export const createProduct = async (req: Request, res: Response) => {
   const existingSku = await Product.findOne({ sku: resolvedSku });
   if (existingSku) return res.status(400).json({ error: 'SKU already exists' });
 
-  const product = await Product.create({ ...req.body, sku: resolvedSku });
+  const product = await Product.create({ ...req.body, sku: resolvedSku, createdBy: req.user.id });
   const populated = await Product.findById(product._id).populate('category', 'name slug');
   res.status(201).json(populated);
 };
 
-export const bulkImportProducts = async (req: Request, res: Response) => {
+export const bulkImportProducts = async (req: AuthenticatedRequest, res: Response) => {
   const rows = Array.isArray(req.body?.items) ? req.body.items : [];
   if (rows.length === 0) return res.status(400).json({ error: 'items array is required' });
+  if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' });
 
   const results: Array<{ index: number; status: 'created' | 'failed'; product?: unknown; error?: string }> = [];
 
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
-      const { name, price, costPrice, category, createdBy } = row;
-      if (!name || price === undefined || costPrice === undefined || !category || !createdBy) {
-        throw new Error('name, price, costPrice, category and createdBy are required');
+      const { name, price, costPrice, category } = row;
+      if (!name || price === undefined || costPrice === undefined || !category) {
+        throw new Error('name, price, costPrice and category are required');
       }
 
       const categoryExists = await Category.findById(category);
@@ -127,7 +130,7 @@ export const bulkImportProducts = async (req: Request, res: Response) => {
       if (await Product.findOne({ sku: resolvedSku })) throw new Error('SKU already exists');
       if (row.barcode && (await Product.findOne({ barcode: row.barcode }))) throw new Error('Barcode already exists');
 
-      const product = await Product.create({ ...row, sku: resolvedSku });
+      const product = await Product.create({ ...row, sku: resolvedSku, createdBy: req.user.id });
       results.push({ index: i, status: 'created', product });
     } catch (error) {
       results.push({ index: i, status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -141,7 +144,7 @@ export const bulkImportProducts = async (req: Request, res: Response) => {
   });
 };
 
-export const updateProduct = async (req: Request, res: Response) => {
+export const updateProduct = async (req: AuthenticatedRequest, res: Response) => {
   if (req.body.category) {
     const categoryExists = await Category.findById(req.body.category);
     if (!categoryExists) return res.status(400).json({ error: 'Category not found' });
@@ -163,13 +166,13 @@ export const updateProduct = async (req: Request, res: Response) => {
   res.json(product);
 };
 
-export const deleteProduct = async (req: Request, res: Response) => {
+export const deleteProduct = async (req: AuthenticatedRequest, res: Response) => {
   const product = await Product.findByIdAndDelete(req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
   res.json({ message: 'Product deleted successfully' });
 };
 
-export const getLowStockProducts = async (_req: Request, res: Response) => {
+export const getLowStockProducts = async (_req: AuthenticatedRequest, res: Response) => {
   const lowStock = await Product.find({ $expr: { $lte: ['$stock', '$lowStockThreshold'] }, status: 'active' })
     .populate('category', 'name slug')
     .sort({ stock: 1 });

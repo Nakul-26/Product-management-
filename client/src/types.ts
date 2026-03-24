@@ -47,6 +47,10 @@ export interface SaleItem {
   unitPrice: number;
   lineDiscount: number;
   lineTotal: number;
+  costPriceAtSale?: number;
+  itemRevenue?: number;
+  itemCogs?: number;
+  itemProfit?: number;
 }
 
 export interface Sale {
@@ -60,6 +64,10 @@ export interface Sale {
   gstRate: number;
   gstAmount: number;
   grandTotal: number;
+  grossRevenue?: number;
+  cogs?: number;
+  grossProfit?: number;
+  margin?: number;
   paymentMethod: 'cash' | 'upi' | 'card';
   notes?: string;
   createdBy: string;
@@ -108,4 +116,96 @@ export interface Dashboard {
   pendingPaymentsAmount: number;
   pendingDeliveries: number;
   totalRevenue: number;
+}
+
+export interface ProfitSummary {
+  range: { from: string | null; to: string | null };
+  totalRevenue: number;
+  totalCOGS: number;
+  totalProfit: number;
+  totalExpenses: number;
+  netProfit: number;
+  avgMargin: number;
+  topProfitableProducts: Array<{
+    productId: string;
+    productName: string;
+    sku?: string;
+    totalRevenue: number;
+    totalCOGS: number;
+    totalProfit: number;
+    totalQuantity: number;
+    margin: number;
+  }>;
+}
+
+export type ExpenseCategory = 'rent' | 'utilities' | 'salary' | 'transport' | 'misc' | 'other';
+
+export interface Expense {
+  _id: string;
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  expenseDate: string;
+  notes?: string;
+  createdBy: string;
+  createdAt?: string;
+}
+
+export interface ExpenseListResponse {
+  data: Expense[];
+  totalsByCategory: Array<{ _id: ExpenseCategory; amount: number }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export type StockAdjustmentReason = 'damaged' | 'expired' | 'count_correction' | 'theft' | 'return' | 'other';
+
+export interface StockAdjustment {
+  _id: string;
+  productId: { _id: string; name: string; sku: string; stock?: number } | string;
+  quantityChange: number;
+  reason: StockAdjustmentReason;
+  notes?: string;
+  createdBy: { _id?: string; name?: string; email?: string } | string;
+  createdAt: string;
+}
+
+export interface StockAdjustmentListResponse {
+  data: StockAdjustment[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface PurchaseItem {
+  productId: { _id: string; name: string; sku: string } | string;
+  quantity: number;
+  costPrice: number;
+}
+
+export interface Purchase {
+  _id: string;
+  supplierName: string;
+  items: PurchaseItem[];
+  totalAmount: number;
+  purchaseDate: string;
+  createdBy: string;
+  createdAt?: string;
+}
+
+export interface PurchaseListResponse {
+  data: Purchase[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

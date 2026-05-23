@@ -51,6 +51,9 @@ function SalesHistoryPage() {
     loadSales();
   }, []);
 
+  const createdByName = (createdBy: Sale['createdBy']) =>
+    typeof createdBy === 'string' ? createdBy : createdBy?.name || 'Unknown';
+
   const filteredSales = useMemo(() => {
     return sales.filter((sale) => {
       if (paymentFilter !== 'all' && sale.paymentMethod !== paymentFilter) return false;
@@ -189,7 +192,7 @@ function SalesHistoryPage() {
       sale.grandTotal.toFixed(2),
       (sale.grossProfit || 0).toFixed(2),
       (sale.margin || 0).toFixed(2),
-      sale.createdBy
+      createdByName(sale.createdBy)
     ]);
 
     const csv = [headers, ...rows].map((row) => row.map((cell) => csvValue(cell)).join(',')).join('\n');
@@ -294,7 +297,7 @@ function SalesHistoryPage() {
                   <td>{new Date(sale.createdAt).toLocaleString()}</td>
                   <td>{sale.paymentMethod}</td>
                   <td>₹{sale.grandTotal.toFixed(2)}</td>
-                  <td>{sale.createdBy}</td>
+                  <td>{createdByName(sale.createdBy)}</td>
                   <td>₹{(sale.grossProfit || 0).toFixed(2)}</td>
                   <td>{(sale.margin || 0).toFixed(2)}%</td>
                   <td><span className="status-pill">completed</span></td>

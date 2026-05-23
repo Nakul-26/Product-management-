@@ -5,7 +5,7 @@ export interface Category {
   description?: string;
   parent?: { _id: string; name: string; slug: string } | string | null;
   status: 'active' | 'inactive';
-  createdBy: string;
+  createdBy: { _id: string; name: string } | string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -24,7 +24,7 @@ export interface Product {
   images: string[];
   expiryDate?: string | null;
   status: 'active' | 'inactive';
-  createdBy: string;
+  createdBy: { _id: string; name: string } | string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -70,7 +70,7 @@ export interface Sale {
   margin?: number;
   paymentMethod: 'cash' | 'upi' | 'card';
   notes?: string;
-  createdBy: string;
+  createdBy: { _id: string; name: string } | string;
   createdAt: string;
 }
 
@@ -147,7 +147,7 @@ export interface Expense {
   amount: number;
   expenseDate: string;
   notes?: string;
-  createdBy: string;
+  createdBy: { _id: string; name: string } | string;
   createdAt?: string;
 }
 
@@ -196,7 +196,7 @@ export interface Purchase {
   items: PurchaseItem[];
   totalAmount: number;
   purchaseDate: string;
-  createdBy: string;
+  createdBy: { _id: string; name: string } | string;
   createdAt?: string;
 }
 

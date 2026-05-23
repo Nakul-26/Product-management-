@@ -111,7 +111,7 @@ export const getSales = async (req: AuthenticatedRequest, res: Response) => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
 
   const [items, total] = await Promise.all([
-    Sale.find().sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    Sale.find().sort({ createdAt: -1 }).populate('createdBy', 'name').skip((page - 1) * limit).limit(limit),
     Sale.countDocuments()
   ]);
 

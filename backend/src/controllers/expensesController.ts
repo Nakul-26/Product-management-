@@ -51,6 +51,7 @@ export const getExpenses = async (req: AuthenticatedRequest, res: Response) => {
   const [items, total, totals] = await Promise.all([
     Expense.find(query)
       .sort({ expenseDate: -1, createdAt: -1 })
+      .populate('createdBy', 'name')
       .skip((page - 1) * limit)
       .limit(limit),
     Expense.countDocuments(query),

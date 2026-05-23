@@ -4,9 +4,16 @@ import router from './routes';
 
 const app = express();
 
+const getOrigins = () => {
+  const origin = process.env.CLIENT_ORIGIN;
+  if (!origin) return 'http://localhost:5173';
+  if (origin.includes(',')) return origin.split(',').map(o => o.trim());
+  return origin;
+};
+
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    origin: getOrigins(),
     credentials: true
   })
 );

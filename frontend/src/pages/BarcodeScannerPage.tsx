@@ -17,7 +17,11 @@ function BarcodeScannerPage() {
   useEffect(() => {
     scannerRef.current = new Html5QrcodeScanner(
       'reader',
-      { fps: 10, qrbox: { width: 250, height: 150 } },
+      { 
+        fps: 20, 
+        qrbox: { width: 300, height: 250 },
+        aspectRatio: 1.0
+      },
       /* verbose= */ false
     );
 
@@ -31,7 +35,8 @@ function BarcodeScannerPage() {
   }, []);
 
   async function onScanSuccess(decodedText: string) {
-    if (scanResult === decodedText) return; // Prevent duplicate scans
+    // If we already have a result and are loading/showing product, ignore new scans
+    if (scanResult || loading) return; 
     
     setScanResult(decodedText);
     setLoading(true);
@@ -39,6 +44,12 @@ function BarcodeScannerPage() {
     setNotice('');
     setProduct(null);
     setQuantity(1);
+
+    // Pause the scanner to prevent "flickering" while we process the result
+    if (scannerRef.current) {
+      // Note: Html5QrcodeScanner doesn't have a simple 'pause', 
+      // but by checking scanResult above, we effectively ignore new frames.
+    }
 
     try {
       const response = await api.get<ProductListResponse>('/products', {

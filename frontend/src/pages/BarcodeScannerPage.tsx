@@ -133,26 +133,34 @@ function BarcodeScannerPage() {
       </header>
 
       <div className="scanner-container">
+        {/* Status Area - Managed by React */}
+        <div style={{ textAlign: 'center', marginBottom: '20px', minHeight: '50px' }}>
+          {!isCameraActive && !scanResult && !loading && (
+            <div>
+              <p className="muted" style={{ marginBottom: '10px' }}>Camera is off.</p>
+              <button className="btn btn-primary" onClick={startScanner}>Start Camera</button>
+            </div>
+          )}
+          {!isCameraActive && scanResult && <p className="success-text" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>✓ Scanned Successfully!</p>}
+          {loading && <p>Searching database...</p>}
+          {error && <p className="error-text">{error}</p>}
+          {notice && <p className="success-text">{notice}</p>}
+        </div>
+
+        {/* Scanner Target - Managed EXCLUSIVELY by Html5Qrcode. 
+            Keep this div empty in JSX so React never touches its children. */}
         <div 
           id="reader" 
           style={{ 
             width: '100%', 
             maxWidth: '600px', 
             margin: '0 auto', 
-            background: isCameraActive ? 'transparent' : '#eee',
-            minHeight: '300px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
+            background: '#f3f4f6',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            display: isCameraActive ? 'block' : 'none'
           }}
-        >
-          {!isCameraActive && !scanResult && !loading && <p className="muted">Camera is off. Click "Scan Again" to start.</p>}
-          {!isCameraActive && scanResult && <p className="success-text">Barcode Scanned Successfully!</p>}
-        </div>
-        
-        {loading && <p>Searching for product...</p>}
-        {error && <p className="error-text">{error}</p>}
-        {notice && <p className="success-text">{notice}</p>}
+        ></div>
 
         {scanResult && !loading && (
           <div className="panel" style={{ marginTop: '20px' }}>

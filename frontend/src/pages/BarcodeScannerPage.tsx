@@ -18,46 +18,78 @@ function BarcodeScannerPage() {
   const scanCountRef = useRef(0);
   const SCAN_THRESHOLD = 3;
 
+  const isTransitioningRef = useRef(false);
+
   const startScanner = async () => {
+    if (isTransitioningRef.current) return;
+    
     try {
+      isTransitioningRef.current = true;
+      setError('');
+      setNotice('');
+
+      // Browser security check: Camera access requires HTTPS or localhost
+      if (!window.isSecureContext) {
+        setError('Camera access requires a secure connection (HTTPS).');
+        isTransitioningRef.current = false;
+        return;
+      }
+
       if (!html5QrCodeRef.current) {
         html5QrCodeRef.current = new Html5Qrcode('reader');
       }
 
       if (html5QrCodeRef.current.isScanning) {
+        isTransitioningRef.current = false;
         return;
       }
 
       setIsCameraActive(true);
-      setError('');
-      setNotice('');
       scanCandidateRef.current = null;
       scanCountRef.current = 0;
 
+      const config = { 
+        fps: 20, 
+        qrbox: { width: 280, height: 280 },
+        aspectRatio: 1.0,
+        disableFlip: false
+      };
+
+      // Try environment camera first
       await html5QrCodeRef.current.start(
         { facingMode: 'environment' },
-        { 
-          fps: 20, 
-          qrbox: { width: 300, height: 250 },
-          aspectRatio: 1.0,
-          disableFlip: false
-        },
+        config,
         onScanSuccess,
         onScanFailure
       );
     } catch (err: any) {
-      setError('Failed to start camera. ' + err.message);
+      console.error('Scanner error:', err);
+      let userMessage = err.message || 'Unknown error';
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        userMessage = 'Camera permission denied.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        userMessage = 'No camera found.';
+      }
+
+      setError('Failed to start camera: ' + userMessage);
       setIsCameraActive(false);
+    } finally {
+      isTransitioningRef.current = false;
     }
   };
 
   const stopScanner = async () => {
+    if (isTransitioningRef.current) return;
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
+        isTransitioningRef.current = true;
         await html5QrCodeRef.current.stop();
         setIsCameraActive(false);
       } catch (err) {
         console.error('Failed to stop camera', err);
+      } finally {
+        isTransitioningRef.current = false;
       }
     }
   };
@@ -134,6 +166,22 @@ function BarcodeScannerPage() {
   const handleEditProduct = () => {
     if (product) {
       const url = `/products?edit=${product._id}`;
+      window.history.pushState({}, '', url);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
+  const handleStockPurchase = () => {
+    if (product) {
+      const url = `/purchases?productId=${product._id}`;
+      window.history.pushState({}, '', url);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
+  const handleStockAdjustment = () => {
+    if (product) {
+      const url = `/stock-adjustments?productId=${product._id}`;
       window.history.pushState({}, '', url);
       window.dispatchEvent(new PopStateEvent('popstate'));
     }
@@ -223,8 +271,14 @@ function BarcodeScannerPage() {
                       Add to Cart
                     </button>
                   )}
+                  <button className="btn btn-light" onClick={handleStockPurchase}>
+                    Stock Purchase
+                  </button>
+                  <button className="btn btn-light" onClick={handleStockAdjustment}>
+                    Stock Adjustment
+                  </button>
                   <button className="btn btn-light" onClick={handleEditProduct}>
-                    Update Stock / Edit Product
+                    Edit Product Info
                   </button>
                 </div>
               </div>

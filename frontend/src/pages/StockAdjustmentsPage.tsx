@@ -25,12 +25,24 @@ function StockAdjustmentsPage() {
   };
 
   useEffect(() => {
-    setLoading(true);
-    loadData()
-      .catch((requestError: any) => {
+    const init = async () => {
+      setLoading(true);
+      try {
+        await loadData();
+        
+        const params = new URLSearchParams(window.location.search);
+        const pid = params.get('productId');
+        if (pid) {
+          setProductId(pid);
+          setNotice('Product pre-selected from scanner.');
+        }
+      } catch (requestError: any) {
         setError(requestError?.response?.data?.error || requestError?.message || 'Failed to load stock adjustments.');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const totalAdjusted = useMemo(

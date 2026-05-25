@@ -309,6 +309,17 @@ table { width: 100%; border-collapse: collapse; min-width: 600px; }
     .mobile-stack-table td:before { flex: 0 0 18%; font-size: 12px; }
     .mobile-stack-table td { padding: 6px 8px; }
   }
+
+  /* Prevent horizontal overflow from very long content or form controls on small screens */
+  .table-container { max-width: 100%; }
+  .mobile-stack-table td, .mobile-stack-table td > *, .mobile-stack-table td:before,
+  .panel, .form-grid select, .form-grid input, .form-grid textarea, table, th, td {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  /* Ensure select/options don't force wider than container */
+  .form-grid select, .form-grid option { min-width: 0; }
 }
 
 .history-filters {
@@ -397,6 +408,20 @@ tbody td { vertical-align: middle; }
   align-items: center;
   justify-content: center;
   color: #667085;
+}
+
+/* Fix form control overflow and save button on small screens */
+@media (max-width: 520px) {
+  .form-grid label, .form-grid label > * { width: 100%; box-sizing: border-box; }
+  .form-grid input, .form-grid textarea, .form-grid select { width: 100%; min-width: 0; }
+  .form-grid .full-width { grid-column: 1 / -1; }
+
+  /* When the form actions span full width, stack the button and make it full width so it never overflows */
+  .form-actions.full-width { justify-content: stretch; }
+  .form-actions.full-width .btn { width: 100%; box-sizing: border-box; }
+
+  /* Ensure panels don't allow children to overflow visually */
+  .panel { overflow: hidden; }
 }
 
 .password-toggle:hover {

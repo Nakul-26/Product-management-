@@ -41,7 +41,24 @@ function PurchasesPage() {
   };
 
   useEffect(() => {
-    loadData();
+    const init = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([loadProducts(), loadPurchases()]);
+        
+        const params = new URLSearchParams(window.location.search);
+        const productId = params.get('productId');
+        if (productId) {
+          setDraftItem(prev => ({ ...prev, productId }));
+          setNotice('Product pre-selected from scanner.');
+        }
+      } catch (requestError: any) {
+        setError(requestError?.response?.data?.error || requestError?.message || 'Failed to load purchases module.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
   const addItem = () => {

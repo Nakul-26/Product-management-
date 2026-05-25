@@ -14,6 +14,9 @@ function BarcodeScannerPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const { addToCart } = useCart();
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const scanCandidateRef = useRef<string | null>(null);
+  const scanCountRef = useRef(0);
+  const SCAN_THRESHOLD = 3;
 
   const startScanner = async () => {
     try {
@@ -28,13 +31,16 @@ function BarcodeScannerPage() {
       setIsCameraActive(true);
       setError('');
       setNotice('');
+      scanCandidateRef.current = null;
+      scanCountRef.current = 0;
 
       await html5QrCodeRef.current.start(
         { facingMode: 'environment' },
         { 
           fps: 20, 
           qrbox: { width: 300, height: 250 },
-          aspectRatio: 1.0
+          aspectRatio: 1.0,
+          disableFlip: false
         },
         onScanSuccess,
         onScanFailure
@@ -65,7 +71,21 @@ function BarcodeScannerPage() {
 
   async function onScanSuccess(decodedText: string) {
     const trimmedText = decodedText.trim();
-    // Immediately stop the camera hardware
+    
+    // Consensus logic: require SCAN_THRESHOLD identical consecutive reads
+    if (trimmedText === scanCandidateRef.current) {
+      scanCountRef.current++;
+    } else {
+      scanCandidateRef.current = trimmedText;
+      scanCountRef.current = 1;
+      return; // Wait for more reads of this new candidate
+    }
+
+    if (scanCountRef.current < SCAN_THRESHOLD) {
+      return; // Not confident enough yet
+    }
+
+    // Immediately stop the camera hardware once confident
     await stopScanner();
     
     setScanResult(trimmedText);

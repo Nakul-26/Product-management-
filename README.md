@@ -2,6 +2,8 @@
 
 A comprehensive, full-stack Retail Enterprise Resource Planning (ERP) application designed to streamline daily shop operations. It handles product inventory, barcode scanning, Point of Sale (POS) billing, purchases, expenses, and provides an analytical dashboard to track overall business performance.
 
+**🌐 Live Demo:** [https://product-management-c0p.pages.dev](https://product-management-c0p.pages.dev)
+
 ## 🚀 Features
 
 *   **Dashboard Analytics:** Real-time metrics including Total Revenue, COGS (Cost of Goods Sold), Gross/Net Profit, and low stock alerts. Features a visual revenue chart and a table of top profitable products.

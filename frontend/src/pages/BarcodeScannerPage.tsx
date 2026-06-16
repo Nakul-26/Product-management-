@@ -75,7 +75,7 @@ function BarcodeScannerPage() {
         errorString.includes('permission dismissed') ||
         err.name === 'NotAllowedError'
       ) {
-        userMessage = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+        userMessage = 'Camera blocked. Please click the padlock icon (🔒) in your address bar and allow camera access.';
       } else if (
         errorString.includes('notfounderror') || 
         errorString.includes('devicesnotfound') ||

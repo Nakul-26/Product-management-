@@ -93,14 +93,18 @@ function BarcodeScannerPage() {
 
   const stopScanner = async () => {
     if (isTransitioningRef.current) return;
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+    if (html5QrCodeRef.current) {
       try {
         isTransitioningRef.current = true;
-        await html5QrCodeRef.current.stop();
+        if (html5QrCodeRef.current.isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
+        html5QrCodeRef.current.clear(); // Fully clear the instance from the DOM
         setIsCameraActive(false);
       } catch (err) {
         console.error('Failed to stop camera', err);
       } finally {
+        html5QrCodeRef.current = null; // Reset the ref so it initializes cleanly next time
         isTransitioningRef.current = false;
       }
     }
@@ -109,7 +113,15 @@ function BarcodeScannerPage() {
   useEffect(() => {
     startScanner();
     return () => {
-      stopScanner();
+      // Use void to handle the async cleanup without returning a promise to useEffect
+      void stopScanner();
+      
+      // Fallback: If navigating away, forcefully remove any lingering video elements
+      // html5-qrcode sometimes leaves stream tracks open in single-page apps
+      const readerElement = document.getElementById('reader');
+      if (readerElement) {
+        readerElement.innerHTML = '';
+      }
     };
   }, []);
 

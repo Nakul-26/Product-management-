@@ -80,7 +80,35 @@ The application recently underwent a significant UI polish to make it presentati
 *   **Polished Navigation:** A clean, sticky header on desktop with a fully functional hamburger drawer menu for mobile devices.
 *   **Unified Forms:** Standardized inputs, dropdowns, and text areas with consistent padding, borders, and modern focus rings.
 
+## 📸 Application Screenshots
+
+<details>
+<summary><b>Click to expand UI Preview</b></summary>
+<br>
+
+### Login Page
+![Login Page](image.png)
+
+### Dashboard Analytics
+![Dashboard Page](image-1.png)
+
+### Point of Sale (Sales)
+![Sales Page](image-2.png)
+
+### Barcode Scanner
+![Scanner Page](image-3.png)
+
+### Product Management
+![Manage Products Page](image-4.png)
+
+### Categories
+![Categories Page](image-5.png)
+
+### Purchases & Stock Intake
+![Purchases Page](image-6.png)
+
+</details>
+
 ## 📄 License
 
 This project is licensed under the MIT License.
-

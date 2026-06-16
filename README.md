@@ -83,3 +83,4 @@ The application recently underwent a significant UI polish to make it presentati
 ## 📄 License
 
 This project is licensed under the MIT License.
+

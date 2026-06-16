@@ -64,15 +64,27 @@ function BarcodeScannerPage() {
       );
     } catch (err: any) {
       console.error('Scanner error:', err);
-      let userMessage = err.message || 'Unknown error';
+      let userMessage = 'Unable to start camera. Please ensure no other app is using it and try again.';
       
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        userMessage = 'Camera permission denied.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        userMessage = 'No camera found.';
+      // html5-qrcode wraps the error in a string sometimes, or it could be an Error object
+      const errorString = String(err).toLowerCase();
+      
+      if (
+        errorString.includes('notallowederror') || 
+        errorString.includes('permission denied') ||
+        errorString.includes('permission dismissed') ||
+        err.name === 'NotAllowedError'
+      ) {
+        userMessage = 'Camera permission denied. Please allow camera access in your browser settings and try again.';
+      } else if (
+        errorString.includes('notfounderror') || 
+        errorString.includes('devicesnotfound') ||
+        err.name === 'NotFoundError'
+      ) {
+        userMessage = 'No camera device found on this device.';
       }
 
-      setError('Failed to start camera: ' + userMessage);
+      setError(userMessage);
       setIsCameraActive(false);
     } finally {
       isTransitioningRef.current = false;

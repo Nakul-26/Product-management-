@@ -100,7 +100,7 @@ function AppShell() {
               Scanner
             </button>
             <button type="button" className={`btn ${route === '/sales' ? 'btn-primary' : 'btn-light'}`} onClick={() => navigate('/sales')}>
-              POS
+              Sales
             </button>
             <button
               type="button"

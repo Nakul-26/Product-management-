@@ -87,25 +87,25 @@ The application recently underwent a significant UI polish to make it presentati
 <br>
 
 ### Login Page
-![Login Page](image.png)
+![Login Page](screenshots/login.png)
 
 ### Dashboard Analytics
-![Dashboard Page](image-1.png)
+![Dashboard Page](screenshots/dashboard.png)
 
 ### Point of Sale (Sales)
-![Sales Page](image-2.png)
+![Sales Page](screenshots/sales.png)
 
 ### Barcode Scanner
-![Scanner Page](image-3.png)
+![Scanner Page](screenshots/scanner.png)
 
 ### Product Management
-![Manage Products Page](image-4.png)
+![Manage Products Page](screenshots/products.png)
 
 ### Categories
-![Categories Page](image-5.png)
+![Categories Page](screenshots/categories.png)
 
 ### Purchases & Stock Intake
-![Purchases Page](image-6.png)
+![Purchases Page](screenshots/purchases.png)
 
 </details>
 

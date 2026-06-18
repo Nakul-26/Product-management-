@@ -287,7 +287,13 @@ function SalesHistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {paginatedSales.length === 0 ? (
+              {loading && paginatedSales.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
+                    Loading sales records...
+                  </td>
+                </tr>
+              ) : paginatedSales.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
                     No sales found matching your filters.

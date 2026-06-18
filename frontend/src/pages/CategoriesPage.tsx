@@ -130,7 +130,13 @@ function CategoriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {categories.length === 0 ? (
+                {loading && categories.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
+                      Loading categories...
+                    </td>
+                  </tr>
+                ) : categories.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
                       No categories found. Start by adding one.

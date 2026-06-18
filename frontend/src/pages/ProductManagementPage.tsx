@@ -217,7 +217,13 @@ function ProductManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.length === 0 ? (
+                {loading && products.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
+                      Loading products...
+                    </td>
+                  </tr>
+                ) : products.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="muted" style={{ textAlign: 'center', padding: '3rem' }}>
                       No products in your inventory.

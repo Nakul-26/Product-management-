@@ -4,16 +4,41 @@ import router from './routes';
 
 const app = express();
 
-const getOrigins = () => {
+const getOrigins = (): string[] => {
   const origin = process.env.CLIENT_ORIGIN;
-  if (!origin) return 'http://localhost:5173';
-  if (origin.includes(',')) return origin.split(',').map(o => o.trim());
-  return origin;
+  if (!origin) return ['http://localhost:5173'];
+  return origin.split(',').map(o => o.trim());
 };
 
 app.use(
   cors({
-    origin: getOrigins(),
+    origin: (origin, callback) => {
+      const allowedOrigins = getOrigins();
+      
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // Check if the origin is in the allowed list
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Support preview deployments (e.g., *.product-management-c0p.pages.dev)
+      const isAllowedPreview = allowedOrigins.some(baseOrigin => {
+        // If it's a pages.dev domain, check if it's a subdomain
+        if (baseOrigin.endsWith('.pages.dev')) {
+          const domain = baseOrigin.replace(/^https?:\/\//, '');
+          return origin.endsWith(domain);
+        }
+        return false;
+      });
+
+      if (isAllowedPreview) {
+        return callback(null, true);
+      }
+
+      callback(null, false);
+    },
     credentials: true
   })
 );
